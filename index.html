@@ -11,8 +11,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Trade Günlüğü">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-v2.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192-v2.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
@@ -262,9 +262,23 @@ body{margin:0;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none
 [hidden]{display:none!important}
 .bar::before{content:"";position:absolute;left:-16px;right:-16px;bottom:100%;height:env(safe-area-inset-top,0px);background:var(--bg)}
 .bar{margin-inline:-16px;padding-inline:16px}
+/* Açılış animasyonu: T harfi belirir, harfler içinden sağa doğru açılır */
+#splash{position:fixed;inset:0;z-index:100;background:#1f6f5c;display:grid;place-items:center;transition:opacity .5s ease,visibility .5s}
+#splash.out{opacity:0;visibility:hidden}
+html[data-splash="skip"] #splash{display:none}
+.sp-word{display:flex;align-items:baseline;font-family:var(--display);font-weight:700;font-size:clamp(2.4rem,12vw,4.2rem);letter-spacing:-.02em;color:#fff;white-space:nowrap;line-height:1.2}
+.sp-t{display:inline-block;transform-origin:50% 70%;animation:spT .6s cubic-bezier(.2,.9,.3,1.25) both}
+.sp-rest{display:inline-flex;overflow:hidden;max-width:0;padding-block:.15em;margin-block:-.15em;animation:spGrow 1.1s cubic-bezier(.22,.8,.2,1) .7s forwards}
+.sp-rest span{display:inline-block;white-space:pre;opacity:0;transform:translateX(-.6em);animation:spLetter .45s ease-out forwards;animation-delay:calc(.75s + var(--i)*.055s)}
+@keyframes spT{from{opacity:0;transform:scale(.55)}to{opacity:1;transform:none}}
+@keyframes spGrow{to{max-width:12em}}
+@keyframes spLetter{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.sp-t,.sp-rest,.sp-rest span{animation:none}.sp-rest{max-width:none}.sp-rest span{opacity:1;transform:none}}
 </style>
+<script>try{if(sessionStorage.getItem("tg-splash"))document.documentElement.dataset.splash="skip"}catch(e){}</script>
 </head>
 <body>
+<div id="splash" aria-hidden="true"><div class="sp-word"><span class="sp-t">T</span><span class="sp-rest"><span style="--i:0">r</span><span style="--i:1">a</span><span style="--i:2">d</span><span style="--i:3">e</span><span style="--i:4">&nbsp;</span><span style="--i:5">G</span><span style="--i:6">ü</span><span style="--i:7">n</span><span style="--i:8">l</span><span style="--i:9">ü</span><span style="--i:10">ğ</span><span style="--i:11">ü</span></span></div></div>
 
 <div class="wrap">
   <div class="bar">
@@ -699,6 +713,19 @@ document.addEventListener("visibilitychange",()=>{
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 
 render();
+
+/* ---------- açılış animasyonu ---------- */
+(function(){
+  const sp=document.getElementById("splash"); if(!sp)return;
+  const finish=()=>{if(sp.dataset.done)return;sp.dataset.done="1";sp.classList.add("out");setTimeout(()=>sp.remove(),700)};
+  try{
+    if(sessionStorage.getItem("tg-splash")){sp.remove();return}
+    sessionStorage.setItem("tg-splash","1");
+  }catch{}
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches){setTimeout(finish,600);return}
+  sp.onclick=finish;
+  setTimeout(finish,2600);
+})();
 </script>
 
 </body>
