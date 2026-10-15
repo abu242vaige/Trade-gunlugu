@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Trade Günlüğü</title>
+<meta name="theme-color" content="#f3f5f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1412" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trade Günlüğü">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: üst çubuk (geri + yol) + tek ekran; Menü → Yıllar → Aylar → Günler → Gün */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --sunk:#e8ecea; --fg:#14201b; --muted:#5d6b65; --line:#d5dcd8;
+  --accent:#1f6f5c; --accent-fg:#ffffff;
+  --up:#178a4c; --up-bg:#dff3e7; --down:#c8323a; --down-bg:#fbe1e2;
+  --display:"Sora",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1412; --surface:#151d1a; --sunk:#1c2622; --fg:#e4ece8; --muted:#8c9a94; --line:#26332e;
+  --accent:#4cc3a2; --accent-fg:#06221a;
+  --up:#3fcf83; --up-bg:#123323; --down:#ff6b72; --down-bg:#3a161a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1412; --surface:#151d1a; --sunk:#1c2622; --fg:#e4ece8; --muted:#8c9a94; --line:#26332e;
+  --accent:#4cc3a2; --accent-fg:#06221a;
+  --up:#3fcf83; --up-bg:#123323; --down:#ff6b72; --down-bg:#3a161a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:14px}
+.wrap{max-width:960px;margin:0 auto;padding-inline:16px;padding-block:14px 48px;display:grid;gap:18px}
+#view{display:grid;gap:16px;min-width:0}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;gap:10px;padding-block:8px;border-bottom:1px solid var(--line)}
+.back{background:var(--surface);border:1px solid var(--line);border-radius:9px;height:36px;padding:0 12px;font-weight:600;flex:none}
+.back:hover{border-color:var(--accent)}
+.crumbs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0;font-size:.85rem;color:var(--muted)}
+.crumbs button{background:none;border:0;padding:2px 4px;border-radius:6px;color:var(--muted)}
+.crumbs button:hover{color:var(--fg);background:var(--sunk)}
+.crumbs b{color:var(--fg);padding:2px 4px}
+.store{margin-left:auto;font-size:.72rem;color:var(--muted);white-space:nowrap}
+@media (max-width:520px){.store{display:none}}
+
+h1{font-size:1.6rem;margin:0;letter-spacing:-.02em;text-wrap:balance}
+h2{font-size:1.15rem;margin:0;text-wrap:balance}
+.lead{color:var(--muted);margin:4px 0 0}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.head .num{font-size:1rem;font-weight:600}
+.eyebrow{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* Menü */
+.hero{display:grid;gap:14px;padding-block:18px 4px}
+.hero h1{font-size:2.1rem}
+.today{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.today .t{display:grid;gap:2px;min-width:0}
+.today .t b{font-size:1rem}
+.today .t span{color:var(--muted);font-size:.85rem}
+.today button{margin-left:auto}
+.menu{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:720px){.menu{grid-template-columns:minmax(0,1fr)}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;text-align:left;display:grid;gap:10px;align-content:start;min-height:170px;transition:border-color .15s,transform .15s}
+.tile:hover{border-color:var(--accent);transform:translateY(-2px)}
+.tile svg{width:30px;height:30px;stroke:var(--accent);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tile b{font-size:1.2rem}
+.tile span{color:var(--muted);line-height:1.45}
+.tile em{font-style:normal;font-family:var(--mono);font-size:.85rem;margin-top:auto}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}.tile:hover{transform:none}}
+
+/* Kartlar: yıl / ay */
+.grid{display:grid;gap:10px}
+.years{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.months{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:720px){.months{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:440px){.months{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:left;display:grid;gap:6px;min-width:0}
+.card:hover{border-color:var(--accent)}
+.card .big{font-family:var(--mono);font-size:1.6rem;font-weight:600}
+.card .name{font-size:1.05rem;font-weight:600}
+.card .v{font-family:var(--mono);font-size:.95rem}
+.card .s{font-size:.75rem;color:var(--muted)}
+.card.pos{background:var(--up-bg);border-color:color-mix(in srgb,var(--up) 35%,transparent)} .card.pos .v{color:var(--up)}
+.card.neg{background:var(--down-bg);border-color:color-mix(in srgb,var(--down) 40%,transparent)} .card.neg .v{color:var(--down)}
+.card.now{box-shadow:inset 0 0 0 2px var(--accent)}
+.addyear{border:1px dashed var(--line);background:none;border-radius:14px;color:var(--muted);font-weight:600;min-height:110px}
+.addyear:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Özet kutuları */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:4px}
+.stat label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.stat b{font-family:var(--mono);font-size:1.25rem;font-weight:600}
+.stat i{font-style:normal;font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+
+/* Takvim */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.dow{font-size:.68rem;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.06em}
+.day{aspect-ratio:1/1;max-width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:6px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;min-width:0;text-align:left}
+.day .d{font-family:var(--mono);font-size:.9rem;font-weight:600}
+.day .p{font-family:var(--mono);font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.day.pos{background:var(--up-bg);border-color:color-mix(in srgb,var(--up) 35%,transparent)} .day.pos .p{color:var(--up)}
+.day.neg{background:var(--down-bg);border-color:color-mix(in srgb,var(--down) 40%,transparent)} .day.neg .p,.day.neg .d{color:var(--down)}
+.day.istoday{box-shadow:inset 0 0 0 2px var(--accent)}
+.day.blank{visibility:hidden}
+.day:hover{border-color:var(--accent)}
+@media (max-width:440px){.cal{gap:4px}.day{padding:4px;border-radius:8px}.day .p{font-size:.58rem}}
+
+/* Gün sayfası */
+.result{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.result button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:12px;font-weight:600}
+.result .b-up[aria-pressed="true"]{background:var(--up);border-color:var(--up);color:#fff}
+.result .b-down[aria-pressed="true"]{background:var(--down);border-color:var(--down);color:#fff}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field{display:grid;gap:4px;min-width:0}
+.field label,.lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+input,textarea,select{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:70px;line-height:1.45}
+.fields input{font-family:var(--mono)}
+.trades{display:grid;gap:8px;list-style:none;margin:0;padding:0}
+.trade{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:6px;background:var(--bg)}
+.trade-top{display:flex;gap:6px;align-items:center}
+.trade-top input{font-weight:600}
+.time{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:9px;height:38px;padding:0 10px;font-family:var(--mono);font-weight:600;font-size:.85rem;color:var(--muted);white-space:nowrap}
+.time.set{color:var(--accent);border-color:var(--accent)}
+.time[aria-expanded="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.tp{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px;display:grid;gap:8px}
+.tp .lbl{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tp .lbl button{background:none;border:0;color:var(--muted);font-size:.75rem;text-decoration:underline;text-transform:none;letter-spacing:0}
+.hours{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px}
+.mins{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+@media (max-width:440px){.hours{grid-template-columns:repeat(6,minmax(0,1fr))}.mins{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.hours button,.mins button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 0;font-family:var(--mono);font-weight:600;font-size:.85rem}
+.hours button:hover,.mins button:hover{border-color:var(--accent)}
+.hours button[aria-pressed="true"],.mins button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.modes button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:12px 8px;display:grid;gap:2px;text-align:center}
+.modes button:hover{border-color:var(--accent)}
+.modes b{font-family:var(--mono);font-size:1.1rem}
+.modes span{font-size:.75rem;color:var(--muted)}
+.exact{display:flex;gap:6px;align-items:center}
+.exact input{width:90px;font-family:var(--mono)}
+.titem .tm{font-family:var(--mono);font-weight:600;color:var(--accent);margin-right:6px}
+.x{background:none;border:0;color:var(--muted);font-size:1.1rem;width:30px;height:30px;border-radius:7px;flex:none}
+.x:hover{background:var(--down-bg);color:var(--down)}
+.add{border:1px dashed var(--line);background:none;border-radius:10px;padding:10px;color:var(--muted);font-weight:600}
+.add:hover{border-color:var(--accent);color:var(--accent)}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{background:var(--accent);color:var(--accent-fg);border:0;border-radius:10px;padding:10px 18px;font-weight:600}
+.ghost{background:none;border:1px solid var(--line);border-radius:10px;padding:9px 14px;color:var(--muted)}
+.ghost:hover{border-color:var(--accent);color:var(--fg)}
+.status{font-size:.78rem;color:var(--muted)}
+.hint{font-size:.78rem;color:var(--muted);margin:0}
+.daynav{display:flex;gap:8px}
+
+/* İşlemler listesi */
+.filters{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:8px}
+@media (max-width:560px){.filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.filters input{grid-column:1/-1}}
+.tlist{display:grid;gap:8px;list-style:none;margin:0;padding:0}
+.titem{background:var(--surface);border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:12px 14px;display:grid;gap:4px;text-align:left;width:100%}
+.titem.pos{border-left-color:var(--up)} .titem.neg{border-left-color:var(--down)}
+.titem:hover{border-color:var(--accent)}
+.titem .row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.titem .date{font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+.titem b{font-size:.98rem;overflow-wrap:anywhere}
+.titem p{margin:0;color:var(--muted);line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted)}
+
+/* Kâr/Zarar */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-family:var(--mono);font-weight:600}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.85rem}
+th{font-family:var(--display);font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+th:first-child,td:first-child{text-align:left;font-family:var(--display)}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--sunk)}
+.barcell{width:34%}
+.bars{position:relative;height:14px;background:var(--sunk);border-radius:4px}
+.bars i{position:absolute;top:0;bottom:0;border-radius:4px}
+.bars .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--muted);opacity:.5}
+tfoot td{font-weight:600;border-bottom:0}
+
+/* Telefon: alt menü çubuğu, büyük dokunma alanları, sabit Kaydet */
+.tabs{display:none}
+@media (max-width:720px){
+  input,textarea,select{font-size:16px}
+  .wrap{padding-block:6px calc(90px + env(safe-area-inset-bottom,0px))}
+  .store{display:none}
+  .back{height:40px}
+  .hero{padding-block:8px 0}
+  .hero h1{font-size:1.7rem}
+  h1{font-size:1.4rem}
+  .tile{min-height:0;padding:16px;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}
+  .tile svg{grid-row:span 3}
+  .tile em{margin-top:0}
+  .today button{margin-left:0;width:100%;min-height:46px}
+  .card{padding:14px}
+  .card .big{font-size:1.35rem}
+  .result button{min-height:50px;font-size:1rem}
+  .time,.x{height:44px}
+  .x{width:40px}
+  .hours button,.mins button{padding:11px 0;font-size:.95rem}
+  .modes button{padding:14px 8px}
+  .actions{position:sticky;bottom:calc(66px + env(safe-area-inset-bottom,0px));background:var(--surface);padding-block:10px;margin-inline:-16px;padding-inline:16px;border-top:1px solid var(--line);z-index:3}
+  .actions .btn{flex:1;min-height:48px;font-size:1rem}
+  .actions .ghost{min-height:48px}
+  .actions .status{flex-basis:100%;text-align:center}
+  .daynav button{flex:1;min-height:44px}
+  .chip{padding:8px 16px}
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+  .tabs button{background:none;border:0;display:grid;justify-items:center;gap:3px;padding:6px 0;border-radius:10px;font-size:.7rem;font-weight:600;color:var(--muted);min-height:52px}
+  .tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tabs button[aria-current="page"]{color:var(--accent);background:var(--sunk)}
+}
+
+/* Kâr/zarar rakamları: büyük ve kalın */
+.stat b{font-size:1.75rem;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.stat i{font-size:.9rem;font-weight:600}
+.stat:has(b.up){background:var(--up-bg)} .stat:has(b.up) i{color:var(--up)}
+.stat:has(b.down){background:var(--down-bg)} .stat:has(b.down) i{color:var(--down)}
+.card .v{font-size:1.3rem;font-weight:700;letter-spacing:-.01em}
+.card .s{font-size:.8rem}
+.head .num{font-size:1.5rem;font-weight:700;letter-spacing:-.02em}
+.tile em{font-size:1.15rem;font-weight:700}
+.today .t .num{font-size:1.4rem;font-weight:700}
+.day .p{font-size:.8rem;font-weight:700}
+.titem .row .num{font-size:1.1rem;font-weight:700}
+td.up,td.down{font-weight:700}
+tfoot td{font-size:.95rem}
+@media (max-width:720px){
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat b{font-size:1.45rem}
+  .card .v{font-size:1.15rem}
+  .head .num{font-size:1.3rem}
+  .day .p{font-size:.66rem}
+}
+@media (max-width:440px){.day .p{font-size:.6rem}}
+/* Yedek */
+.backup{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:10px}
+.backup.warn{border-color:color-mix(in srgb,var(--down) 45%,var(--line));background:var(--down-bg)}
+.backup .t{display:grid;gap:2px}
+.backup .t span{color:var(--muted);font-size:.85rem}
+.bk-actions{display:flex;gap:8px;flex-wrap:wrap}
+.bk-actions button{flex:1;min-height:44px}
+.backup .status{margin:0}
+.backup .status button{margin-left:6px;padding:6px 10px}
+/* Ana ekran uygulaması: çentik alanı */
+html{padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
+body{margin:0;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+[hidden]{display:none!important}
+.bar::before{content:"";position:absolute;left:-16px;right:-16px;bottom:100%;height:env(safe-area-inset-top,0px);background:var(--bg)}
+.bar{margin-inline:-16px;padding-inline:16px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="bar">
+    <button class="back" id="back" hidden>‹ Geri</button>
+    <nav class="crumbs" id="crumbs" aria-label="Konum"></nav>
+    <span class="store" id="store">Yükleniyor…</span>
+  </div>
+  <main id="view"></main>
+</div>
+<nav class="tabs" id="tabs" aria-label="Ana menü">
+  <button data-tab="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Menü</button>
+  <button data-tab="years"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Takvim</button>
+  <button data-tab="trades"><svg viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>İşlemler</button>
+  <button data-tab="pnl"><svg viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M4 16l5-5 4 3 7-8"/><path d="M15 6h5v5"/></svg>Kâr/Zarar</button>
+</nav>
+
+<script>
+const AY=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+const GUN=["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"];
+const GUNU=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+const key=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
+const fmt=n=>(n>0?"+":n<0?"−":"")+Math.abs(n).toLocaleString("tr-TR",{maximumFractionDigits:2});
+const fmtP=n=>(n>0?"+":n<0?"−":"")+"%"+Math.abs(n).toLocaleString("tr-TR",{maximumFractionDigits:2});
+const parse=v=>{const n=parseFloat(String(v).replace(/\s/g,"").replace(",","."));return isFinite(n)?Math.abs(n):0};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cls=n=>n>0?"up":n<0?"down":"";
+const pn=n=>n>0?" pos":n<0?" neg":"";
+const longDate=k=>{const [y,m,d]=k.split("-").map(Number);return `${d} ${AY[m-1]} ${y}, ${GUNU[new Date(y,m-1,d).getDay()]}`};
+
+const now=new Date();
+let TODAY=key(now.getFullYear(),now.getMonth(),now.getDate());
+let days={};        // "YYYY-MM-DD" -> {result:'up'|'down'|null, amount, pct, trades:[{t,d}]}
+let extraYears=[];  // kullanıcının eklediği boş yıllar
+let stack=[{v:"home"}];
+let draft=null, draftKey=null, dirty=false;
+
+/* ---------- kayıt ---------- */
+const LS="trade-gunlugu-v1";
+try{days=JSON.parse(localStorage.getItem(LS)||"{}")}catch{days={}}
+try{extraYears=JSON.parse(localStorage.getItem(LS+"-years")||"[]")}catch{}
+const lsSave=()=>{try{localStorage.setItem(LS,JSON.stringify(days))}catch{}};
+let backend={save:async()=>{},remove:async()=>{}};
+$("store").textContent="Bu cihazda saklanıyor";
+try{navigator.storage?.persist?.()}catch{}
+
+
+/* ---------- hesap ---------- */
+const sign=e=>e&&e.result?(e.result==="down"?-1:1):0;
+const val=e=>sign(e)*(e.amount||0);
+const valP=e=>sign(e)*(e.pct||0);
+function sum(prefix=""){
+  let net=0,pct=0,win=0,loss=0,wd=0,ld=0,tr=0,best=null,worst=null;
+  for(const [k,e] of Object.entries(days)){
+    if(!k.startsWith(prefix))continue;
+    tr+=(e.trades||[]).length;
+    if(!e.result)continue;
+    const v=val(e); net+=v; pct+=valP(e);
+    if(e.result==="up"){win+=v;wd++}else{loss+=v;ld++}
+    if(!best||v>best.v)best={k,v}; if(!worst||v<worst.v)worst={k,v};
+  }
+  return {net,pct,win,loss,wd,ld,tr,days:wd+ld,best,worst};
+}
+function yearList(){
+  const ys=new Set([now.getFullYear(),...extraYears]);
+  Object.keys(days).forEach(k=>ys.add(+k.slice(0,4)));
+  return [...ys].sort((a,b)=>b-a);
+}
+
+/* ---------- gezinme ---------- */
+function go(v,p={}){if(!leaveDay())return;stack.push({v,...p});render();scrollTo(0,0)}
+function jump(i){if(!leaveDay())return;stack=stack.slice(0,i+1);render();scrollTo(0,0)}
+$("back").onclick=()=>jump(stack.length-2);
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{
+  if(!leaveDay())return;
+  stack=b.dataset.tab==="home"?[{v:"home"}]:[{v:"home"},{v:b.dataset.tab}];
+  render();scrollTo(0,0);
+});
+function leaveDay(){ if(dirty&&draftKey)saveDay(true); return true }
+
+const TITLES={home:"Menü",years:"Takvim",trades:"İşlemler",pnl:"Kâr / Zarar"};
+function crumbLabel(s){
+  if(s.v==="months")return String(s.y);
+  if(s.v==="days")return AY[s.m];
+  if(s.v==="day")return String(+s.k.slice(8));
+  return TITLES[s.v];
+}
+function render(){
+  const cur=stack[stack.length-1];
+  $("back").hidden=stack.length<2;
+  $("crumbs").innerHTML=stack.map((s,i)=>i===stack.length-1?`<b>${esc(crumbLabel(s))}</b>`:`<button data-i="${i}">${esc(crumbLabel(s))}</button><span aria-hidden="true">›</span>`).join("");
+  $("crumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>jump(+b.dataset.i));
+  const tab=stack.length>1?stack[1].v:"home";
+  document.querySelectorAll("[data-tab]").forEach(b=>{if(b.dataset.tab===tab)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  const V={home:vHome,years:vYears,months:vMonths,days:vDays,day:vDay,trades:vTrades,pnl:vPnl}[cur.v];
+  V(cur,$("view"));
+}
+
+/* ---------- Menü ---------- */
+const ICON={
+  cal:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  list:'<svg viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>',
+  pnl:'<svg viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M4 16l5-5 4 3 7-8"/><path d="M15 6h5v5"/></svg>'
+};
+function vHome(_,el){
+  const y=now.getFullYear(), ys=sum(String(y)), all=sum();
+  const te=days[TODAY], tn=te?.trades?.length||0;
+  const tState=te?.result?`<span class="num ${cls(val(te))}">${fmt(val(te))}${te.pct?" · "+fmtP(valP(te)):""}</span>`:tn?`<span>${tn} işlem yazıldı, sonuç işaretlenmedi</span>`:`<span>Bugün için henüz kayıt yok</span>`;
+  el.innerHTML=`
+  <section class="hero">
+    <div><div class="eyebrow">${longDate(TODAY)}</div><h1>Trade Günlüğü</h1>
+    <p class="lead">İşlemlerini gün gün yaz, artı ve eksi günlerini takip et.</p></div>
+    <div class="today"><div class="t"><b>Bugün</b>${tState}</div><button class="btn" id="goToday">Bugünü yaz</button></div>
+  </section>
+  <div class="menu">
+    <button class="tile" data-go="years">${ICON.cal}<b>Takvim</b><span>Yıl, ay ve gün seç. Her güne işlemlerini ve açıklamalarını yaz.</span><em class="${cls(ys.net)}">${y}: ${ys.days?fmt(ys.net):"kayıt yok"}</em></button>
+    <button class="tile" data-go="trades">${ICON.list}<b>İşlemler</b><span>Yazdığın bütün işlemler ve açıklamaları tek listede. Ara ve filtrele.</span><em>${all.tr} işlem</em></button>
+    <button class="tile" data-go="pnl">${ICON.pnl}<b>Kâr / Zarar</b><span>Toplam kâr, toplam zarar ve yüzdeler. Yıllık ve aylık döküm.</span><em class="${cls(all.net)}">Toplam ${fmt(all.net)} · ${fmtP(all.pct)}</em></button>
+  </div>
+  <section class="backup">
+    <div class="t"><b>Yedek</b><span id="bkInfo"></span></div>
+    <div class="bk-actions"><button class="btn" id="bkSave">Yedek al</button><button class="ghost" id="bkLoad">Yedekten yükle</button></div>
+    <input type="file" id="bkFile" accept="application/json,.json" hidden>
+    <p class="status" id="bkStatus"></p>
+  </section>`;
+  drawBackup();
+  el.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
+  $("goToday").onclick=()=>{
+    if(!leaveDay())return;
+    stack=[{v:"home"},{v:"years"},{v:"months",y:now.getFullYear()},{v:"days",y:now.getFullYear(),m:now.getMonth()},{v:"day",k:TODAY}];
+    render();scrollTo(0,0);
+  };
+}
+
+/* ---------- Yıllar ---------- */
+function vYears(_,el){
+  const ys=yearList();
+  el.innerHTML=`<div class="grid" style="gap:16px">
+    <div><h1>Yıllar</h1><p class="lead">Bir yıl seç, ayları açılsın.</p></div>
+    <div class="grid years">${ys.map(y=>{const s=sum(String(y));return `
+      <button class="card${pn(s.net)}${y===now.getFullYear()?" now":""}" data-y="${y}">
+        <span class="big">${y}</span>
+        <span class="v">${s.days?fmt(s.net)+" · "+fmtP(s.pct):"—"}</span>
+        <span class="s">${s.days?`${s.wd} artı · ${s.ld} eksi gün · ${s.tr} işlem`:"Henüz kayıt yok"}</span>
+      </button>`}).join("")}
+      <button class="addyear" id="addPrev">+ ${Math.min(...ys)-1} yılını ekle</button>
+    </div></div>`;
+  el.querySelectorAll("[data-y]").forEach(b=>b.onclick=()=>go("months",{y:+b.dataset.y}));
+  $("addPrev").onclick=()=>{extraYears.push(Math.min(...ys)-1);try{localStorage.setItem(LS+"-years",JSON.stringify(extraYears))}catch{};render()};
+}
+
+/* ---------- Aylar ---------- */
+function vMonths({y},el){
+  const s=sum(String(y));
+  el.innerHTML=`<div class="grid" style="gap:16px">
+    <div class="head"><div><div class="eyebrow">Yıl</div><h1>${y}</h1></div><span class="num ${cls(s.net)}">${s.days?fmt(s.net)+" · "+fmtP(s.pct):""}</span></div>
+    <div class="grid months">${AY.map((n,i)=>{const ms=sum(`${y}-${pad(i+1)}`);const isNow=y===now.getFullYear()&&i===now.getMonth();return `
+      <button class="card${pn(ms.net)}${isNow?" now":""}" data-m="${i}">
+        <span class="name">${n}</span>
+        <span class="v">${ms.days?fmt(ms.net):"—"}</span>
+        <span class="s">${ms.days?`${fmtP(ms.pct)} · ${ms.wd}↑ ${ms.ld}↓`:ms.tr?ms.tr+" işlem":"Kayıt yok"}</span>
+      </button>`}).join("")}</div></div>`;
+  el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>go("days",{y,m:+b.dataset.m}));
+}
+
+/* ---------- Günler ---------- */
+function vDays({y,m},el){
+  const s=sum(`${y}-${pad(m+1)}`);
+  const first=(new Date(y,m,1).getDay()+6)%7, n=new Date(y,m+1,0).getDate();
+  let cells=GUN.map(g=>`<div class="dow">${g}</div>`).join("")+`<div class="day blank"></div>`.repeat(first);
+  for(let d=1;d<=n;d++){
+    const k=key(y,m,d), e=days[k];
+    const p=e?.result?(e.pct?fmtP(valP(e)):fmt(val(e))):(e?.trades?.length?e.trades.length+" işlem":"");
+    cells+=`<button class="day${e?.result==="up"?" pos":e?.result==="down"?" neg":""}${k===TODAY?" istoday":""}" data-k="${k}" aria-label="${d} ${AY[m]}"><span class="d">${d}</span><span class="p">${p}</span></button>`;
+  }
+  el.innerHTML=`<div class="grid" style="gap:16px">
+    <div class="head"><div><div class="eyebrow">${y}</div><h1>${AY[m]}</h1></div></div>
+    <div class="stats">
+      <div class="stat"><label>Net</label><b class="${cls(s.net)}">${fmt(s.net)}</b><i>${fmtP(s.pct)}</i></div>
+      <div class="stat"><label>Kâr</label><b class="up">${fmt(s.win)}</b><i>${s.wd} artı gün</i></div>
+      <div class="stat"><label>Zarar</label><b class="down">${fmt(s.loss)}</b><i>${s.ld} eksi gün</i></div>
+      <div class="stat"><label>İşlem</label><b>${s.tr}</b><i>${s.days} gün işaretli</i></div>
+    </div>
+    <section class="panel"><div class="cal">${cells}</div></section></div>`;
+  el.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>go("day",{k:b.dataset.k}));
+}
+
+/* ---------- Gün ---------- */
+function loadDraft(k){
+  const e=days[k]||{};
+  draftKey=k; dirty=false; picker=null;
+  draft={result:e.result||null,amount:e.amount||"",pct:e.pct||"",trades:(e.trades||[]).map(t=>({...t}))};
+  if(!draft.trades.length)draft.trades.push({t:"",d:""});
+}
+function vDay(cur,el){
+  if(draftKey!==cur.k||!dirty)loadDraft(cur.k);
+  const e=days[cur.k];
+  el.innerHTML=`<div class="grid" style="gap:16px">
+    <div class="head"><div><div class="eyebrow">Gün</div><h1>${longDate(cur.k)}</h1></div>
+      <span class="num ${e?.result?cls(val(e)):""}" id="dSum">${e?.result?fmt(val(e))+(e.pct?" · "+fmtP(valP(e)):""):""}</span></div>
+    <section class="panel">
+      <div class="result" role="group" aria-label="Günün sonucu">
+        <button class="b-up" id="bUp" aria-pressed="${draft.result==="up"}">▲ Artıdayım</button>
+        <button class="b-down" id="bDown" aria-pressed="${draft.result==="down"}">▼ Eksideyim</button>
+      </div>
+      <div class="fields">
+        <div class="field"><label for="amt">Kâr / zarar (tutar)</label><input id="amt" inputmode="decimal" placeholder="örn. 250"></div>
+        <div class="field"><label for="pct">Yüzde (%)</label><input id="pct" inputmode="decimal" placeholder="örn. 1.8"></div>
+      </div>
+      <span class="lbl">Günün işlemleri</span>
+      <ul class="trades" id="trades"></ul>
+      <button class="add" id="addTrade">+ İşlem ekle</button>
+      <div class="actions">
+        <button class="btn" id="save">Kaydet</button>
+        <button class="ghost" id="clear">Günü temizle</button>
+        <span class="status" id="status"></span>
+      </div>
+      <p class="hint">Tutarı ve yüzdeyi işaretsiz yaz; Artı/Eksi seçimi işareti belirler. Geri dönünce değişiklikler kendiliğinden kaydedilir.</p>
+    </section>
+    <div class="daynav"><button class="ghost" id="prevD">‹ Önceki gün</button><button class="ghost" id="nextD">Sonraki gün ›</button></div>
+  </div>`;
+  $("amt").value=draft.amount; $("pct").value=draft.pct;
+  $("amt").oninput=ev=>{draft.amount=ev.target.value;dirty=true};
+  $("pct").oninput=ev=>{draft.pct=ev.target.value;dirty=true};
+  const setRes=r=>{draft.result=draft.result===r?null:r;dirty=true;$("bUp").setAttribute("aria-pressed",draft.result==="up");$("bDown").setAttribute("aria-pressed",draft.result==="down")};
+  $("bUp").onclick=()=>setRes("up"); $("bDown").onclick=()=>setRes("down");
+  drawTrades();
+  $("addTrade").onclick=()=>{draft.trades.push({t:"",d:""});dirty=true;drawTrades();$("t"+(draft.trades.length-1)).focus()};
+  $("save").onclick=()=>saveDay(false);
+  const c=$("clear");
+  c.onclick=async()=>{
+    if(c.dataset.arm!=="1"){c.dataset.arm="1";c.textContent="Emin misin? Tekrar bas";setTimeout(()=>{c.dataset.arm="";c.textContent="Günü temizle"},3000);return}
+    delete days[cur.k]; lsSave(); dirty=false;
+    try{await backend.remove(cur.k)}catch{}
+    loadDraft(cur.k); render(); flash("Gün temizlendi");
+  };
+  const shift=n=>{const [y,m,d]=cur.k.split("-").map(Number);const t=new Date(y,m-1,d+n);
+    leaveDay(); const k=key(t.getFullYear(),t.getMonth(),t.getDate());
+    stack=[{v:"home"},{v:"years"},{v:"months",y:t.getFullYear()},{v:"days",y:t.getFullYear(),m:t.getMonth()},{v:"day",k}];
+    render()};
+  $("prevD").onclick=()=>shift(-1); $("nextD").onclick=()=>shift(1);
+}
+let picker=null; // {i, step:'hour'|'mode'|'min', h}
+function drawTrades(){
+  const ul=$("trades"); ul.innerHTML="";
+  draft.trades.forEach((t,i)=>{
+    const li=document.createElement("li"); li.className="trade";
+    const open=picker&&picker.i===i;
+    li.innerHTML=`<div class="trade-top"><button class="time${t.h?" set":""}" id="tm${i}" aria-expanded="${!!open}" aria-label="İşlem saati">${t.h?esc(t.h):"Saat"}</button><input id="t${i}" placeholder="İşlem (örn. BTC long @ 64.200)" aria-label="İşlem ${i+1}"><button class="x" aria-label="İşlemi sil">×</button></div>${open?`<div class="tp" id="tp${i}"></div>`:""}<textarea id="d${i}" placeholder="Açıklama: neden girdin, nasıl çıktın, ne öğrendin…" aria-label="Açıklama ${i+1}"></textarea>`;
+    const ti=li.querySelector("input"), ta=li.querySelector("textarea");
+    ti.value=t.t; ta.value=t.d;
+    ti.oninput=()=>{t.t=ti.value;dirty=true};
+    ta.oninput=()=>{t.d=ta.value;dirty=true};
+    li.querySelector(".time").onclick=()=>{picker=open?null:{i,step:"hour",h:t.h?+t.h.slice(0,2):null};drawTrades()};
+    li.querySelector(".x").onclick=()=>{draft.trades.splice(i,1);if(!draft.trades.length)draft.trades.push({t:"",d:""});picker=null;dirty=true;drawTrades()};
+    ul.appendChild(li);
+    if(open)drawPicker(li.querySelector(".tp"),t);
+  });
+}
+function drawPicker(box,t){
+  const p=picker, done=v=>{t.h=v;dirty=true;picker=null;drawTrades()};
+  if(p.step==="hour"){
+    box.innerHTML=`<span class="lbl">Saat seç${t.h?`<button id="clrT">Saati kaldır</button>`:""}</span>
+      <div class="hours">${Array.from({length:24},(_,h)=>`<button data-h="${h}" aria-pressed="${p.h===h}">${pad(h)}</button>`).join("")}</div>`;
+    box.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{p.h=+b.dataset.h;p.step="mode";drawPicker(box,t)});
+    box.querySelector("#clrT")?.addEventListener("click",()=>done(""));
+  }else if(p.step==="mode"){
+    box.innerHTML=`<span class="lbl">Saat ${pad(p.h)} seçildi<button id="bkH">Saati değiştir</button></span>
+      <div class="modes">
+        <button id="mFull"><b>${pad(p.h)}:00</b><span>Tam saatinde</span></button>
+        <button id="mMin"><b>${pad(p.h)}:__</b><span>Dakika ekle</span></button>
+      </div>`;
+    box.querySelector("#bkH").onclick=()=>{p.step="hour";drawPicker(box,t)};
+    box.querySelector("#mFull").onclick=()=>done(`${pad(p.h)}:00`);
+    box.querySelector("#mMin").onclick=()=>{p.step="min";drawPicker(box,t)};
+  }else{
+    const cm=t.h&&+t.h.slice(0,2)===p.h?+t.h.slice(3):null;
+    box.innerHTML=`<span class="lbl">${pad(p.h)}:__ için dakika seç<button id="bkM">Geri</button></span>
+      <div class="mins">${Array.from({length:12},(_,k)=>k*5).map(m=>`<button data-m="${m}" aria-pressed="${cm===m}">${pad(p.h)}:${pad(m)}</button>`).join("")}</div>
+      <div class="exact"><label class="lbl" for="exM">Tam dakika</label><input id="exM" type="number" min="0" max="59" inputmode="numeric" placeholder="0–59"><button class="ghost" id="exOk">Ekle</button></div>`;
+    box.querySelector("#bkM").onclick=()=>{p.step="mode";drawPicker(box,t)};
+    box.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>done(`${pad(p.h)}:${pad(+b.dataset.m)}`));
+    const ex=box.querySelector("#exM");
+    const ok=()=>{const m=parseInt(ex.value,10);if(m>=0&&m<=59)done(`${pad(p.h)}:${pad(m)}`);else ex.focus()};
+    box.querySelector("#exOk").onclick=ok;
+    ex.onkeydown=e=>{if(e.key==="Enter")ok()};
+  }
+}
+function flash(msg){const s=$("status");if(!s)return;s.textContent=msg;clearTimeout(flash.t);flash.t=setTimeout(()=>{if($("status"))$("status").textContent=""},2500)}
+async function saveDay(silent){
+  const k=draftKey;
+  const trades=draft.trades.filter(t=>t.t.trim()||t.d.trim()||t.h).map(t=>({h:t.h||"",t:t.t.trim(),d:t.d.trim()}))
+    .sort((a,b)=>(a.h||"99")<(b.h||"99")?-1:(a.h||"99")>(b.h||"99")?1:0);
+  picker=null;
+  const entry={result:draft.result,amount:parse(draft.amount),pct:parse(draft.pct),trades};
+  const empty=!entry.result&&!trades.length&&!entry.amount&&!entry.pct;
+  if(empty)delete days[k]; else days[k]=entry;
+  dirty=false; lsSave();
+  try{empty?await backend.remove(k):await backend.save(k,entry);if(!silent)flash("Kaydedildi")}
+  catch{if(!silent)flash("Hesaba kaydedilemedi, bu tarayıcıda tutuldu")}
+  if(!silent){loadDraft(k);render();flash("Kaydedildi")}
+}
+
+/* ---------- İşlemler ---------- */
+let tq="",tYear="all",tRes="all";
+function vTrades(_,el){
+  const ys=yearList();
+  el.innerHTML=`<div class="grid" style="gap:16px">
+    <div><h1>İşlemler</h1><p class="lead">Bütün günlerde yazdığın işlemler, en yeniden eskiye.</p></div>
+    <div class="filters">
+      <input id="tq" placeholder="Ara: sembol, not, kelime…" aria-label="İşlemlerde ara">
+      <select id="ty" aria-label="Yıl"><option value="all">Tüm yıllar</option>${ys.map(y=>`<option value="${y}">${y}</option>`).join("")}</select>
+      <select id="tr" aria-label="Sonuç"><option value="all">Hepsi</option><option value="up">Artı günler</option><option value="down">Eksi günler</option></select>
+    </div>
+    <ul class="tlist" id="tl"></ul></div>`;
+  $("tq").value=tq; $("ty").value=tYear; $("tr").value=tRes;
+  $("tq").oninput=e=>{tq=e.target.value;drawList()};
+  $("ty").onchange=e=>{tYear=e.target.value;drawList()};
+  $("tr").onchange=e=>{tRes=e.target.value;drawList()};
+  drawList();
+}
+function drawList(){
+  const q=tq.trim().toLocaleLowerCase("tr");
+  const rows=[];
+  Object.keys(days).sort().reverse().forEach(k=>{
+    const e=days[k];
+    if(tYear!=="all"&&!k.startsWith(tYear))return;
+    if(tRes!=="all"&&e.result!==tRes)return;
+    (e.trades||[]).forEach(t=>{
+      if(q&&!(t.t+" "+t.d).toLocaleLowerCase("tr").includes(q))return;
+      rows.push({k,e,t});
+    });
+  });
+  const tl=$("tl");
+  if(!rows.length){tl.innerHTML=`<li class="empty">${Object.keys(days).length?"Bu filtreye uyan işlem yok.":"Henüz işlem yok. Takvim'den bir gün seçip ilk işlemini yaz."}</li>`;return}
+  tl.innerHTML=rows.map(({k,e,t})=>`<li><button class="titem${e.result==="up"?" pos":e.result==="down"?" neg":""}" data-k="${k}">
+    <span class="row"><span class="date">${longDate(k)}</span><span class="num ${e.result?cls(val(e)):""}">${e.result?fmt(val(e))+(e.pct?" · "+fmtP(valP(e)):""):""}</span></span>
+    <b>${t.h?`<span class="tm">${esc(t.h)}</span>`:""}${esc(t.t||"(başlıksız işlem)")}</b>${t.d?`<p>${esc(t.d)}</p>`:""}</button></li>`).join("");
+  tl.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>go("day",{k:b.dataset.k}));
+}
+
+/* ---------- Kâr / Zarar ---------- */
+let pYear=now.getFullYear();
+function vPnl(_,el){
+  const all=sum(), ys=yearList();
+  if(!ys.includes(pYear))pYear=ys[0];
+  const ms=AY.map((n,i)=>({n,i,s:sum(`${pYear}-${pad(i+1)}`)}));
+  const max=Math.max(1,...ms.map(x=>Math.abs(x.s.net)));
+  const yS=sum(String(pYear));
+  const bar=v=>{const w=Math.abs(v)/max*50;return `<div class="bars"><span class="mid"></span>${v?`<i style="${v>0?`left:50%;background:var(--up)`:`right:50%;background:var(--down)`};width:${w}%"></i>`:""}</div>`};
+  el.innerHTML=`<div class="grid" style="gap:18px">
+    <div><h1>Kâr / Zarar</h1><p class="lead">Bütün kayıtlarının toplamı.</p></div>
+    <div class="stats">
+      <div class="stat"><label>Net K/Z</label><b class="${cls(all.net)}">${fmt(all.net)}</b><i>${fmtP(all.pct)} toplam</i></div>
+      <div class="stat"><label>Toplam kâr</label><b class="up">${fmt(all.win)}</b><i>${all.wd} artı gün</i></div>
+      <div class="stat"><label>Toplam zarar</label><b class="down">${fmt(all.loss)}</b><i>${all.ld} eksi gün</i></div>
+      <div class="stat"><label>Başarı oranı</label><b>%${all.days?Math.round(all.wd/all.days*100):0}</b><i>${all.tr} işlem</i></div>
+      <div class="stat"><label>En iyi gün</label><b class="up">${all.best?fmt(all.best.v):"—"}</b><i>${all.best?all.best.k.split("-").reverse().join("."):""}</i></div>
+      <div class="stat"><label>En kötü gün</label><b class="down">${all.worst?fmt(all.worst.v):"—"}</b><i>${all.worst?all.worst.k.split("-").reverse().join("."):""}</i></div>
+    </div>
+
+    <section class="panel">
+      <div class="head"><h2>Aylık döküm</h2><div class="chips">${ys.slice().reverse().map(y=>`<button class="chip" data-py="${y}" aria-pressed="${y===pYear}">${y}</button>`).join("")}</div></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Ay</th><th>Net</th><th>%</th><th>Kâr</th><th>Zarar</th><th>Gün ↑/↓</th><th class="barcell"></th></tr></thead>
+        <tbody>${ms.map(({n,i,s})=>`<tr class="click" data-m="${i}"><td>${n}</td><td class="${cls(s.net)}">${s.days?fmt(s.net):"—"}</td><td class="${cls(s.pct)}">${s.days?fmtP(s.pct):"—"}</td><td class="up">${s.wd?fmt(s.win):"—"}</td><td class="down">${s.ld?fmt(s.loss):"—"}</td><td>${s.wd}/${s.ld}</td><td class="barcell">${bar(s.net)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><td>${pYear} toplam</td><td class="${cls(yS.net)}">${fmt(yS.net)}</td><td class="${cls(yS.pct)}">${fmtP(yS.pct)}</td><td class="up">${fmt(yS.win)}</td><td class="down">${fmt(yS.loss)}</td><td>${yS.wd}/${yS.ld}</td><td></td></tr></tfoot>
+      </table></div>
+    </section>
+
+    <section class="panel">
+      <h2>Yıllık döküm</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Yıl</th><th>Net</th><th>%</th><th>Kâr</th><th>Zarar</th><th>Gün ↑/↓</th><th>İşlem</th></tr></thead>
+        <tbody>${ys.map(y=>{const s=sum(String(y));return `<tr class="click" data-y="${y}"><td>${y}</td><td class="${cls(s.net)}">${s.days?fmt(s.net):"—"}</td><td class="${cls(s.pct)}">${s.days?fmtP(s.pct):"—"}</td><td class="up">${s.wd?fmt(s.win):"—"}</td><td class="down">${s.ld?fmt(s.loss):"—"}</td><td>${s.wd}/${s.ld}</td><td>${s.tr}</td></tr>`}).join("")}</tbody>
+      </table></div>
+    </section></div>`;
+  el.querySelectorAll("[data-py]").forEach(b=>b.onclick=()=>{pYear=+b.dataset.py;render()});
+  el.querySelectorAll("tr[data-m]").forEach(r=>r.onclick=()=>{stack=[{v:"home"},{v:"years"},{v:"months",y:pYear},{v:"days",y:pYear,m:+r.dataset.m}];render();scrollTo(0,0)});
+  el.querySelectorAll("tr[data-y]").forEach(r=>r.onclick=()=>{stack=[{v:"home"},{v:"years"},{v:"months",y:+r.dataset.y}];render();scrollTo(0,0)});
+}
+
+/* ---------- yedek ---------- */
+const BK=LS+"-lastbackup";
+function lastBackup(){try{return +localStorage.getItem(BK)||0}catch{return 0}}
+function drawBackup(){
+  const n=Object.keys(days).length, lb=lastBackup(), info=$("bkInfo"); if(!info)return;
+  const ago=lb?Math.floor((Date.now()-lb)/864e5):null;
+  info.textContent=!n?"Kayıtların bu telefonda duruyor. Kayıt ekledikçe ara ara yedek al."
+    :!lb?`${n} günlük kayıt var, henüz hiç yedek almadın.`
+    :ago===0?`Son yedek bugün alındı.`:`Son yedek ${ago} gün önce alındı.`;
+  info.closest(".backup").classList.toggle("warn",n>0&&(!lb||ago>=7));
+  $("bkSave").onclick=saveBackup;
+  $("bkLoad").onclick=()=>$("bkFile").click();
+  $("bkFile").onchange=loadBackup;
+}
+async function saveBackup(){
+  const name=`trade-gunlugu-yedek-${TODAY}.json`;
+  const body=JSON.stringify({app:"trade-gunlugu",version:1,saved:new Date().toISOString(),days,extraYears},null,1);
+  const file=new File([body],name,{type:"application/json"});
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:"Trade Günlüğü yedeği"})}
+    else{const a=document.createElement("a");a.href=URL.createObjectURL(file);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+    try{localStorage.setItem(BK,String(Date.now()))}catch{}
+    $("bkStatus").textContent="Yedek hazır. Dosyayı Dosyalar uygulamasına ya da iCloud'a kaydet.";
+  }catch(e){ if(e&&e.name==="AbortError")return; $("bkStatus").textContent="Yedek alınamadı. Tekrar dene." }
+  drawBackup();
+}
+async function loadBackup(ev){
+  const f=ev.target.files[0]; ev.target.value=""; if(!f)return;
+  try{
+    const data=JSON.parse(await f.text());
+    if(!data||typeof data.days!=="object")throw 0;
+    const incoming=Object.keys(data.days).length;
+    const st=$("bkStatus");
+    st.innerHTML=`Yedekte ${incoming} günlük kayıt var. Telefondaki kayıtlarla birleştirilsin mi? <button class="ghost" id="bkOk">Evet, birleştir</button>`;
+    $("bkOk").onclick=()=>{
+      days={...days,...data.days}; lsSave();
+      if(Array.isArray(data.extraYears)){extraYears=[...new Set([...extraYears,...data.extraYears])];try{localStorage.setItem(LS+"-years",JSON.stringify(extraYears))}catch{}}
+      render(); $("bkStatus").textContent=`${incoming} gün yüklendi.`;
+    };
+  }catch{ $("bkStatus").textContent="Bu dosya bir Trade Günlüğü yedeği değil." }
+}
+
+/* gün değişince bugünü güncelle */
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden)return;
+  const n=new Date(), k=key(n.getFullYear(),n.getMonth(),n.getDate());
+  if(k!==TODAY){TODAY=k;render()}
+});
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+render();
+</script>
+
+</body>
+</html>
